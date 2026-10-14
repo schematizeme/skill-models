@@ -1,0 +1,12 @@
+slug = "models"
+name = "schematize-models"
+tag = "Ferramenta · Multi-modelo"
+status = "beta"
+order = 34
+current_version = "0.1.1"
+href = "/models"
+
+[descriptions]
+pt = "Orquestre Codex, Gemini e Cursor como subagents sem perder o piso: o Claude fica com código, revisão e arquitetura (peso máximo); outro modelo entra para mídia, segunda opinião, vantagem documentada ou pedido seu. Imagem nunca sai do Claude, saída externa é não confiável, escrita é deny-by-default."
+en = "Orchestrate Codex, Gemini and Cursor as subagents without losing the floor: Claude keeps code, review and architecture (maximum weight); another model joins for media, a second opinion, a documented advantage or your request. Images never come from Claude, external output is untrusted, writes are deny-by-default."
+es = "Orquesta Codex, Gemini y Cursor como subagentes sin perder el piso: Claude se queda con código, revisión y arquitectura (peso máximo); otro modelo entra por medios, segunda opinión, ventaja documentada o pedido tuyo. La imagen nunca sale de Claude, la salida externa no es confiable, la escritura es deny-by-default."
