@@ -3,9 +3,8 @@ name: schematize-models
 metadata:
   version: 0.1.0
 description: >-
-  Orquestra Codex, Gemini e Cursor como subagents: roteia por peso (Claude fica com código, revisão e arquitetura)
-  e gera imagem/mídia sempre fora do Claude. Use ao delegar a outro modelo, pedir segunda opinião cruzada ou gerar
-  imagem. Saída externa é não confiável.
+  Orquestra Codex, Gemini e Cursor como subagents: roteia por peso (Claude fica com código, revisão, arquitetura);
+  imagem/mídia sempre fora do Claude. Use ao delegar a outro modelo, pedir segunda opinião ou gerar imagem.
 ---
 <!-- cross-skill: seguranca-llm.md -> schematize-ai; orquestracao.md, efeitos-externos.md -> schematize-engineering -->
 
