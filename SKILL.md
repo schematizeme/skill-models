@@ -1,7 +1,7 @@
 ---
 name: schematize-models
 metadata:
-  version: 0.1.1
+  version: 0.2.0
 description: >-
   Orquestra Codex, Gemini e Cursor como subagents, roteando por peso; imagem/mídia sempre fora do Claude. Use ao delegar a outro modelo, pedir segunda opinião ou gerar imagem.
 ---
@@ -15,7 +15,7 @@ código, e roteia assim**; outro modelo entra só para o que o Claude **não dev
 mídia), para **segunda opinião**, onde há **vantagem documentada com fonte**, ou quando o usuário
 pede paralelismo/custo. E o que volta de fora é **não confiável até o Claude validar**.
 
-**Versão:** skill `schematize-models` v0.1.1. Changelog em `CHANGELOG.md`.
+**Versão:** skill `schematize-models` v0.2.0. Changelog em `CHANGELOG.md`.
 
 ## Precedência e herança (leia antes de divergir)
 
