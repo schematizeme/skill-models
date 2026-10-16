@@ -5,7 +5,9 @@ de exceção.
 
 1. **Código, revisão de código, refactor, arquitetura e orquestração ficam com o Claude** (peso
    máximo). Outro modelo só por: (a) **mídia**, (b) **segunda opinião**, (c) **vantagem documentada
-   com fonte**, (d) **pedido do usuário** — o motivo vai no brief.
+   com fonte**, (d) **pedido do usuário**, (e) **economia por assinatura** (Codex/Cursor/Gemini já
+   instalados e logados: fit, custo marginal e placar, `roteamento.md` §6; a escada da engineering
+   manda no código) — o motivo vai no brief.
 2. **Imagem, visual gerado e mídia NUNCA por modelo Claude.** Use `/models-image`: detecta Codex e
    Gemini autenticados, **pergunta ao usuário qual usar** (nunca escolha sozinho), gera, salva em
    arquivo e reporta caminho e licença (**não verificada**). Nenhum disponível: diga sem rodeio que
@@ -20,7 +22,11 @@ de exceção.
    para outro fornecedor — avise e, em repo de cliente/dado sensível, pergunte antes.
 7. **Efeito externo nunca sai de não-prd.** O externo não faz deploy, e-mail, pagamento nem rede
    com efeito.
-8. **Não invente flag nem capacidade:** o que não foi verificado se diz "não verificado".
-9. <!-- herdado:engineering/orquestracao:curto -->**Orquestrador não desenvolve; subagent barato executa.** O agent principal só planeja, despacha e revisa; ação onerosa vira micro-tasks para o executor mais barato que resolve: `haiku` (mecânico) / `sonnet` (código; falhou → mesmo subagent corrige, até 2 rodadas) → Codex `gpt-5.6-terra` → Cursor → subagent `opus` (motivo) → `park`; **visual vai direto ao Codex**; **imagem nunca pelo Claude: detectar Codex/Gemini e perguntar ao usuário qual usar (Codex é a sugestão), nunca API de imagem paga**; papéis em `agentes.toml`. No overdev, cada item do checklist vai a um subagent e o principal revisa antes do `- [x]`. **Sem frota ociosa:** idle com pendência volta ao trabalho; dependente de outro agent → mata e enfileira com gatilho; terminou → mata (§9.6). Detalhe: `schematize-engineering` → `references/orquestracao.md` §9.<!-- /herdado -->
+8. **Placar:** `delegar.sh --tipo <tipo>` registra cada delegação (vocabulário fechado, nunca
+   conteúdo); depois de revisar, `placar.sh ajustar <id> corrigido-pelo-revisor|falhou`. Publicar o
+   feedback agregado é **opt-in** (posta no nome da conta GitHub do usuário; prévia e aviso antes),
+   nunca bloqueia e teste nunca publica.
+9. **Não invente flag nem capacidade:** o que não foi verificado se diz "não verificado".
+10. <!-- herdado:engineering/orquestracao:curto -->**Orquestrador não desenvolve; subagent barato executa.** O agent principal só planeja, despacha e revisa; ação onerosa vira micro-tasks para o executor mais barato que resolve: `haiku` (mecânico) / `sonnet` (código; falhou → mesmo subagent corrige, até 2 rodadas) → Codex `gpt-5.6-terra` → Cursor → subagent `opus` (motivo) → `park`; **visual vai direto ao Codex**; **imagem nunca pelo Claude: detectar Codex/Gemini e perguntar ao usuário qual usar (Codex é a sugestão), nunca API de imagem paga**; papéis em `agentes.toml`. No overdev, cada item do checklist vai a um subagent e o principal revisa antes do `- [x]`. **Sem frota ociosa:** idle com pendência volta ao trabalho; dependente de outro agent → mata e enfileira com gatilho; terminou → mata (§9.6). Detalhe: `schematize-engineering` → `references/orquestracao.md` §9.<!-- /herdado -->
 
-Scripts: `bash .claude/skills/schematize-models/scripts/detectar.sh` · `delegar.sh` · `imagem.sh`.
+Scripts: `bash .claude/skills/schematize-models/scripts/detectar.sh` · `delegar.sh` · `imagem.sh` · `placar.sh`.

@@ -16,6 +16,8 @@
 #   cursor — sem geração de imagem documentada: sai 2.
 # Nunca sobrescreve: <saida> existente = exit 4. Grava <saida>.origem.json (proveniência) e NÃO
 # afirma licença: direitos de uso dependem dos termos do provedor e do plano do usuário.
+# Placar: cada tentativa vira uma linha (tipo imagem, vocabulário fechado) em scripts/placar.sh;
+# nunca grava o prompt nem o caminho. Falha do placar não derruba a geração.
 # Exit: 0 ok · 1 rodou mas não produziu imagem · 2 provedor/caminho indisponível · 3 segredo no
 #       prompt · 4 uso inválido · 124 timeout.
 set -euo pipefail
@@ -42,10 +44,18 @@ if [ -e "$saida" ]; then echo "imagem.sh: $saida já existe; não sobrescrevo (u
 SEGREDO='AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE KEY-----|gh[pousr]_[A-Za-z0-9]{30,}|sk-[A-Za-z0-9_-]{20,}|xox[abprs]-[A-Za-z0-9-]{10,}|AIza[0-9A-Za-z_-]{30,}|(api[_-]?key|secret|passw(or)?d|token)["'"'"' ]*[:=]["'"'"' ]*[A-Za-z0-9/+_.-]{12,}'
 if printf '%s' "$prompt" | grep -qE "$SEGREDO"; then echo "imagem.sh: o prompt parece conter segredo; recusado" >&2; exit 3; fi
 
+t0="$(date +%s)"
+reg() { # resultado [nota]
+  local args=(registrar --ferramenta "$prov" --modelo padrao --tipo imagem --resultado "$1" --duracao "$(( $(date +%s) - t0 ))")
+  if [ -n "${2:-}" ]; then args+=(--nota "$2"); fi
+  bash "$(dirname "${BASH_SOURCE[0]}")/placar.sh" "${args[@]}" >/dev/null 2>&1 || true
+}
+
 if [ "$prov" = "cursor" ]; then
+  reg indisponivel
   echo "imagem.sh: o Cursor CLI não tem geração de imagem documentada (verificado na doc em 2026-10-14). Escolha Codex ou Gemini." >&2; exit 2
 fi
-command -v "$prov" >/dev/null 2>&1 || { echo "imagem.sh: CLI '$prov' não encontrado (rode scripts/detectar.sh)" >&2; exit 2; }
+command -v "$prov" >/dev/null 2>&1 || { reg indisponivel; echo "imagem.sh: CLI '$prov' não encontrado (rode scripts/detectar.sh)" >&2; exit 2; }
 command -v timeout >/dev/null 2>&1 || { echo "imagem.sh: 'timeout' ausente" >&2; exit 2; }
 
 work="$(mktemp -d "${TMPDIR:-/tmp}/models-img-XXXXXX")"
@@ -65,14 +75,15 @@ Descrição: $prompt"
   if [ -n "${CODEX_HOME:-}" ]; then cenv+=("CODEX_HOME=$CODEX_HOME"); fi
   printf '%s' "$instr" | ( cd "$work/cwd" && timeout --kill-after=5 "$tmo" "${cenv[@]}" \
       codex exec -s read-only -C "$work/cwd" --skip-git-repo-check --ephemeral --color never -o "$work/msg.txt" - >"$work/out.txt" 2>"$work/err.txt" ) || rc=$?
-  if [ "$rc" -eq 124 ] || [ "$rc" -eq 137 ]; then echo "imagem.sh: timeout (${tmo}s)" >&2; exit 124; fi
-  if [ "$rc" -ne 0 ]; then echo "imagem.sh: codex saiu com $rc: $(head -c 400 "$work/err.txt")" >&2; exit 1; fi
+  if [ "$rc" -eq 124 ] || [ "$rc" -eq 137 ]; then reg travou timeout; echo "imagem.sh: timeout (${tmo}s)" >&2; exit 124; fi
+  if [ "$rc" -ne 0 ]; then reg falhou erro-cli; echo "imagem.sh: codex saiu com $rc: $(head -c 400 "$work/err.txt")" >&2; exit 1; fi
   # arquivo(s) NOVOS (depois do marcador). Se outro codex gerar imagem em paralelo, pode haver mais de um.
   mapfile -t cands < <(find "$ch" -type f \( -iname '*.png' -o -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.webp' \) -newer "$marker" -printf '%T@ %p\n' 2>/dev/null | sort -rn | cut -d' ' -f2-)
   if [ "${#cands[@]}" -gt 1 ]; then echo "imagem.sh: ${#cands[@]} imagens novas em $ch; usando a mais recente (confira se não é de outra sessão)" >&2; fi
   achada="${cands[0]:-}"
 else
   if [ "$yolo" -ne 1 ]; then
+    reg indisponivel
     cat >&2 <<'MSG'
 imagem.sh: caminho do Gemini NÃO VERIFICADO em modo headless.
   A imagem vem da extensão `nanobanana` (gemini extensions install https://github.com/gemini-cli-extensions/nanobanana,
@@ -83,16 +94,17 @@ MSG
     exit 2
   fi
   nk="${NANOBANANA_API_KEY:-${GEMINI_API_KEY:-}}"
-  [ -n "$nk" ] || { echo "imagem.sh: falta NANOBANANA_API_KEY (ou GEMINI_API_KEY)" >&2; exit 2; }
+  [ -n "$nk" ] || { reg indisponivel auth; echo "imagem.sh: falta NANOBANANA_API_KEY (ou GEMINI_API_KEY)" >&2; exit 2; }
   mkdir -p "$work/cwd"; rc=0
   ( cd "$work/cwd" && timeout --kill-after=5 "$tmo" env -i PATH="$PATH" HOME="$HOME" LANG="${LANG:-C}" NANOBANANA_API_KEY="$nk" \
       gemini -p "Use a extensão nanobanana para gerar uma imagem: $prompt" --approval-mode yolo --output-format text >"$work/out.txt" 2>"$work/err.txt" </dev/null ) || rc=$?
-  if [ "$rc" -eq 124 ] || [ "$rc" -eq 137 ]; then echo "imagem.sh: timeout (${tmo}s)" >&2; exit 124; fi
-  if [ "$rc" -ne 0 ]; then echo "imagem.sh: gemini saiu com $rc: $(head -c 400 "$work/err.txt")" >&2; exit 1; fi
+  if [ "$rc" -eq 124 ] || [ "$rc" -eq 137 ]; then reg travou timeout; echo "imagem.sh: timeout (${tmo}s)" >&2; exit 124; fi
+  if [ "$rc" -ne 0 ]; then reg falhou erro-cli; echo "imagem.sh: gemini saiu com $rc: $(head -c 400 "$work/err.txt")" >&2; exit 1; fi
   achada="$(find "$work/cwd" -type f \( -iname '*.png' -o -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.webp' \) -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -n 1 | cut -d' ' -f2-)"
 fi
 
-[ -n "$achada" ] && [ -s "$achada" ] || { echo "imagem.sh: o modelo terminou mas NÃO produziu imagem (não declaro sucesso). Veja a resposta dele e tente de novo." >&2; exit 1; }
+[ -n "$achada" ] && [ -s "$achada" ] || { reg falhou sem-saida; echo "imagem.sh: o modelo terminou mas NÃO produziu imagem (não declaro sucesso). Veja a resposta dele e tente de novo." >&2; exit 1; }
+reg ok
 cp -- "$achada" "$saida_abs"
 printf '{"provedor":"%s","gerado_em":"%s","prompt":"%s","arquivo":"%s","licenca":"NAO VERIFICADA: direitos de uso comercial dependem dos termos do provedor e do plano do usuario; confirmar antes de publicar","origem_local":"%s"}\n' \
   "$prov" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$(json_str "$prompt")" "$(json_str "$saida_abs")" "$(json_str "$achada")" > "$saida_abs.origem.json"

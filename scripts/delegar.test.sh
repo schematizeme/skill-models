@@ -80,5 +80,16 @@ echo "== falha e timeout =="
 run STUB_RC=3 -- codex "$T/prompt.txt";                  esperar cli-falhou 1 '"exit_cli":3'
 run STUB_SLEEP=5 -- gemini "$T/prompt.txt" --timeout 1;  esperar timeout-duro 124 'timeout'
 
+echo "== placar: registro automático (vocabulário fechado, sem conteúdo) =="
+PL="$T/home/.claude/schematize/models-score.jsonl"; rm -f "$PL"
+run -- codex "$T/prompt.txt" --tipo teste;                 esperar tipo-ok 0 '"placar_id":"' 'placar.sh ajustar'
+run STUB_RC=3 -- gemini "$T/prompt.txt" --tipo review;     esperar tipo-falha 1 '"placar_id":"'
+run STUB_SLEEP=5 -- cursor "$T/prompt.txt" --tipo docs --timeout 1; esperar tipo-timeout 124
+run -- codex "$T/prompt.txt";                              esperar sem-tipo-nao-registra 0 '"placar_id":""' 'sem --tipo'
+run -- codex "$T/prompt.txt" --tipo segredo;               esperar tipo-invalido 4 "--tipo inválido"
+mkdir -p "$T/vazio-bin2"; B_SAVE="$B"; B="$T/vazio-bin2"; run -- codex "$T/prompt.txt" --tipo mecanico; esperar tipo-indisponivel 2 "não encontrado"; B="$B_SAVE"
+if jq -es 'length==4 and (map(.resultado)==["ok","falhou","travou","indisponivel"]) and (map(.nota)==[null,"erro-cli","timeout",null])' "$PL" >/dev/null 2>&1; then echo "  ✔ placar-4-linhas-ok-falhou-travou-indisponivel"; ok=$((ok+1)); else echo "  ✖ placar inesperado: $(cat "$PL" 2>/dev/null)"; fail=$((fail+1)); fi
+if grep -qE "$T|README|Resuma|/home|/tmp" "$PL" 2>/dev/null; then echo "  ✖ placar vazou caminho/prompt"; fail=$((fail+1)); else echo "  ✔ placar-sem-caminho-nem-prompt"; ok=$((ok+1)); fi
+
 echo; echo "delegar.test.sh: $ok ok, $fail falhas"
 [ "$fail" -eq 0 ]

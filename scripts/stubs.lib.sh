@@ -4,7 +4,7 @@
 # e /usr/bin:/bin, então o codex verdadeiro (~/.npm-global/bin) fica invisível.
 # strict-ok: biblioteca sourceada — `set -e` mudaria as opções do shell do chamador (piso.md §1).
 
-# mkstubs <dir-bin> <lista: codex gemini cursor-agent agent-outro>
+# mkstubs <dir-bin> <lista: codex gemini cursor-agent agent-outro gh>
 mkstubs() {
   local bin="$1"; shift
   mkdir -p "$bin"
@@ -64,6 +64,26 @@ STUB
 #!/usr/bin/env bash
 # `agent` genérico que NÃO é o Cursor: o detector tem de ignorá-lo
 echo "usage: agent [options] (ferramenta qualquer)"
+exit 0
+STUB
+      ;;
+      gh) cat > "$bin/gh" <<'STUB'
+#!/usr/bin/env bash
+# gh FALSO: registra os argumentos e NUNCA toca a rede. Efeito externo não sai de teste.
+# shellcheck disable=SC1091
+. "$(dirname "$0")/ctl.env" 2>/dev/null
+echo "gh $*" >> "${STUB_LOG:-/dev/null}"
+case "${1:-} ${2:-}" in
+  "auth status") if [ "${STUB_GH_AUTH:-1}" = 1 ]; then exit 0; else exit 1; fi ;;
+  "issue list") printf '%s\n' "${STUB_GH_ISSUES:-[]}"; exit 0 ;;
+  "issue create") echo "https://github.com/stub/stub/issues/7"; exit 0 ;;
+  "issue comment")
+    while [ "$#" -gt 0 ]; do
+      if [ "$1" = "--body-file" ]; then cp -- "$2" "${STUB_LOG:-/dev/null}.corpo"; fi
+      shift
+    done
+    exit "${STUB_GH_COMMENT_RC:-0}" ;;
+esac
 exit 0
 STUB
       ;;

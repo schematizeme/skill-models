@@ -9,6 +9,13 @@ bash .claude/skills/schematize-models/scripts/detectar.sh   # ou ~/.claude/skill
 
 Exit `0` = há ao menos um CLI **utilizável**; `1` = nenhum (é a resposta, não falha do script).
 
+O JSON traz também o **portfólio** (`portfolio`: os CLIs instalados e autenticados, candidatos a
+receber trabalho pela assinatura que o usuário já paga) e o `modo`: `portfolio` ou `claude-only`.
+Reporte o portfólio em uma linha e **diga o que muda**: em `portfolio`, valem as regras de economia
+por assinatura (`references/roteamento.md` §6: fit, custo marginal, placar); em `claude-only`,
+**nada muda** (não sugira assinatura, não degrade nada). O detector sabe o que está instalado e
+logado, **não** o plano nem a cota restante. Se houver placar, mostre `placar.sh resumo`.
+
 Reporte, por provedor: instalado?, versão, `autenticado` (`sim` | `provavel` | `nao` |
 `desconhecido`) **e a base** dessa afirmação (`base_auth`). Regras de leitura:
 

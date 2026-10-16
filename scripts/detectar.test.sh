@@ -29,7 +29,7 @@ caso() {
 }
 
 echo "== vermelho: nada instalado =="
-CE="" caso nada 1 '(.utilizaveis|length)==0 and (.provedores|length)==3 and all(.provedores[]; .utilizavel==false)'
+CE="" caso nada 1 '.modo=="claude-only" and (.utilizaveis|length)==0 and (.provedores|length)==3 and all(.provedores[]; .utilizavel==false)'
 echo "== codex =="
 CE="" caso codex-logado 0 '.utilizaveis==["codex"] and (.provedores[]|select(.nome=="codex")|.autenticado=="sim" and .versao=="codex-cli 9.9.9")' codex
 CE="STUB_CODEX_AUTH=0" caso codex-deslogado 1 '(.provedores[]|select(.nome=="codex")|.autenticado=="nao" and .utilizavel==false)' codex
@@ -42,6 +42,9 @@ CE="STUB_CURSOR_AUTH=0" caso cursor-deslogado 1 '(.provedores[]|select(.nome=="c
 CE="" caso agent-generico-ignorado 1 '(.provedores[]|select(.nome=="cursor")|.caminho=="")' agent-outro
 echo "== tudo junto =="
 CE="" caso todos 0 '(.utilizaveis|sort)==["codex","cursor"]' codex gemini cursor-agent
+echo "== portfólio de assinaturas (modo) =="
+CE="" caso portfolio-modo 0 '.modo=="portfolio" and (.portfolio|sort)==["codex","cursor"]' codex gemini cursor-agent
+CE="STUB_CODEX_AUTH=0" caso claude-only-sem-nenhum-logado 1 '.modo=="claude-only" and .portfolio==[]' codex
 
 echo "== o editor /usr/bin/cursor nunca conta como agent CLI =="
 if [ -e /usr/bin/cursor ]; then

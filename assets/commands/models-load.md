@@ -14,9 +14,11 @@ isto **não é opcional**.
      confiável, falha.
    - `midia.md` — imagem nunca pelo Claude; o fluxo detectar -> perguntar -> gerar -> salvar; o
      texto sem rodeio quando nada está disponível; como cada CLI gera imagem hoje.
+   - `placar.md` — registro local de vocabulário fechado, ajuste pelo revisor, `resumo`/`preferir`,
+     publicação opt-in agregada e anônima no conteúdo (autoria é a conta GitHub do usuário).
    - `stack-versoes.md` — anexo volátil: flags reais, versões e fontes, com data e o que foi
      verificado.
-2. **Rode a detecção** antes de opinar sobre qualquer delegação:
+2. **Rode a detecção** (e leia `portfolio`/`modo`) antes de opinar sobre qualquer delegação:
    `bash .claude/skills/schematize-models/scripts/detectar.sh` (ou o caminho global).
 3. **Aplique daqui em diante** a toda tarefa que considere outro modelo, e diga qual piso está
    aplicando quando ele mudar o que você ia fazer.

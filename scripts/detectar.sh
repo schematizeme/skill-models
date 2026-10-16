@@ -11,7 +11,11 @@
 #   gemini -> NÃO há comando de status documentado: env GEMINI_API_KEY/GOOGLE_API_KEY ou o arquivo
 #             local de OAuth do Gemini CLI contam como "provavel"; sem nada = "desconhecido"
 # Valores de `autenticado`: sim | provavel | nao | desconhecido. `utilizavel` = sim ou provavel.
-# Entrada: nenhuma. Saída: JSON em stdout ({"provedores":[...],"utilizaveis":[...]}).
+# Portfólio (references/roteamento.md §6): `portfolio` = os utilizáveis (instalado E autenticado,
+# ou provável no caso do Gemini); `modo` = "portfolio" se há ao menos um, senão "claude-only"
+# (comportamento sem assinatura: nada muda). O script não sabe qual PLANO o usuário paga, só o
+# que está instalado e logado.
+# Entrada: nenhuma. Saída: JSON em stdout ({"provedores":[...],"utilizaveis":[...],"portfolio":[...],"modo":"..."}).
 # Exit: 0 = há ao menos um utilizável · 1 = nenhum utilizável (não é erro: é a resposta).
 #       2 = faltou ferramenta básica (timeout).
 set -euo pipefail
@@ -80,7 +84,11 @@ sep=""; out='{"provedores":['
 for it in "${itens[@]}"; do out+="$sep$it"; sep=","; done
 sep=""; out+='],"utilizaveis":['
 for u in "${utilizaveis[@]+"${utilizaveis[@]}"}"; do out+="$sep$u"; sep=","; done
-out+=']}'
+out+='],"portfolio":['
+sep=""
+for u in "${utilizaveis[@]+"${utilizaveis[@]}"}"; do out+="$sep$u"; sep=","; done
+modo="claude-only"; if [ "${#utilizaveis[@]}" -gt 0 ]; then modo="portfolio"; fi
+out+="],\"modo\":\"$modo\"}"
 printf '%s\n' "$out"
 
 [ "${#utilizaveis[@]}" -gt 0 ]

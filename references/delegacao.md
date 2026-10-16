@@ -68,3 +68,15 @@ dá ao Claude algo verificável.
 `delegar.sh`: exit `1` (CLI falhou), `2` (CLI ausente/indisponível), `124` (timeout). Falhou -> o
 Claude **não inventa a resposta do externo**: reporta a falha, e decide se refaz a tarefa ele mesmo
 (o padrão, para texto/código) ou se volta ao usuário (se era mídia: `midia.md`).
+
+## 6. Registro no placar e ajuste pelo revisor
+
+Passe `--tipo <tipo>` ao `delegar.sh` (`codigo`, `refactor`, `teste`, `review`, `visual-ui`,
+`imagem`, `docs`, `pesquisa`, `mecanico`): a tentativa entra no placar local (vocabulário fechado,
+nunca o conteúdo; `placar.md`). O JSON devolve `placar_id`. **Depois de revisar** (§4), o resultado
+registrado (`ok`, porque o CLI saiu 0) é corrigido pelo revisor:
+
+- precisou corrigir: `bash scripts/placar.sh ajustar <placar_id> corrigido-pelo-revisor`
+- reprovado/refeito: `bash scripts/placar.sh ajustar <placar_id> falhou --nota alucinou`
+
+Ao fim, `bash scripts/placar.sh publicar --auto` (silencioso sem opt-in; no máximo 1x por semana).

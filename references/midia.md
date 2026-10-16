@@ -58,3 +58,9 @@ verificou**. Sem a flag o caminho recomendado é o `/generate` no Gemini interat
 - **Escrever o prompt** de imagem (briefing visual: sujeito, estilo, formato, restrições).
 - **Revisar** o resultado contra o brief e contra marca/legibilidade.
 - **Recusar** a gerar. Só isso.
+
+## 6. Placar
+
+`imagem.sh` registra cada tentativa no placar local (tipo `imagem`, resultado e duração; nunca o
+prompt nem o caminho). Ajuste o resultado depois de abrir a imagem: `placar.sh ajustar ultimo
+corrigido-pelo-revisor --ferramenta <provedor>` (ver `placar.md`).

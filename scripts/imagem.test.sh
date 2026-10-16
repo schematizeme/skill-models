@@ -62,5 +62,10 @@ if [ -s "$T/out/gato.png" ]; then echo "  ✔ arquivo-copiado"; ok=$((ok+1)); el
 if jq -e '.provedor=="codex" and (.licenca|startswith("NAO VERIFICADA"))' "$T/out/gato.png.origem.json" >/dev/null 2>&1; then echo "  ✔ origem-json-honesta-sobre-licenca"; ok=$((ok+1)); else echo "  ✖ origem.json inválido"; fail=$((fail+1)); fi
 if grep -q 'image_gen' "$T/stdin" 2>/dev/null && grep -q 'um gato astronauta' "$T/stdin"; then echo "  ✔ prompt-pede-image_gen"; ok=$((ok+1)); else echo "  ✖ prompt enviado ao codex sem image_gen"; fail=$((fail+1)); fi
 
+echo "== placar: cada tentativa vira linha de vocabulário fechado, sem o prompt =="
+PL="$T/home/.claude/schematize/models-score.jsonl"
+if [ -s "$PL" ] && jq -es 'all(.[]; .tipo=="imagem") and (map(.resultado)|index("ok")!=null) and (map(.resultado)|index("travou")!=null) and (map(.resultado)|index("falhou")!=null) and (map(.resultado)|index("indisponivel")!=null)' "$PL" >/dev/null 2>&1; then echo "  ✔ placar-registra-ok-travou-falhou-indisponivel"; ok=$((ok+1)); else echo "  ✖ placar de imagem incompleto: $(cat "$PL" 2>/dev/null)"; fail=$((fail+1)); fi
+if grep -qE 'gato|astronauta|/tmp|png' "$PL" 2>/dev/null; then echo "  ✖ placar vazou prompt/caminho"; fail=$((fail+1)); else echo "  ✔ placar-sem-prompt-nem-caminho"; ok=$((ok+1)); fi
+
 echo; echo "imagem.test.sh: $ok ok, $fail falhas"
 [ "$fail" -eq 0 ]

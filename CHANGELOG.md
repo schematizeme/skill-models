@@ -3,6 +3,21 @@
 Todas as mudanças relevantes deste pacote, no formato [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/),
 com versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [0.3.0] — 2026-10-15
+Economia por assinatura e placar de ferramentas. A tese: quem já paga Codex, Cursor e/ou Gemini tem cota que se perde se não for usada; despachar unidades a elas poupa tokens do Claude e ganha paralelismo, sem tirar do Claude o papel de orquestrador e revisor. E sem registro do que cada ferramenta entrega, a escolha vira opinião: nasce o placar.
+
+### Adicionado
+- **Economia por assinatura** (`references/roteamento.md` §6): motivo (e); portfólio detectado (instalado E autenticado); decisão por unidade (peso 10 fica no Claude; mídia pergunta; fit forte com fonte; código segue a escada da engineering; teste/docs/review/mecânico/pesquisa comum pelo placar com >= 5 amostras e score >= 0,8); custo marginal (cota paga < Claude haiku/sonnet < opus); aquecimento de baixo risco para formar histórico; taxonomia fechada de tipos de tarefa (§3.1).
+- **`scripts/placar.sh`** (`registrar|ajustar|resumo|preferir|status|optin|publicar`) com **`scripts/placar.test.sh`** (63 casos; HOME falso, relógio injetado e `gh` falso; vermelhos vistos por mutação): registro local JSONL em `~/.claude/schematize/models-score.jsonl` de vocabulário fechado (ferramenta, modelo, tipo, resultado, duração, nota de categoria fechada); o script recusa código, caminho, projeto, prompt e texto livre.
+- **Publicação do feedback**: comentário agregado na issue da semana ISO (`Placar AAAA-Www`) do repo público `schematizeme/schematize-models-placar`. Opt-in na 1ª vez com prévia exata e aviso de que o comentário fica no nome da conta GitHub do usuário (conteúdo anônimo, autoria não); no máximo 1x por semana, >= 5 amostras, disparo oportunista (`publicar --auto`) ao fim de `/models-delegate` e `/models-review`; sem `gh`/auth/opt-in, silêncio e placar local; falha de rede ignorada.
+- **`/models-score`** (ver, ajustar o resultado após revisar, publicar, ligar/desligar) e **`references/placar.md`**.
+- `detectar.sh` devolve `portfolio` e `modo` (`portfolio` | `claude-only`; sem nenhuma assinatura, o comportamento é o de sempre).
+- `delegar.sh --tipo <tipo>` e `imagem.sh` registram cada tentativa no placar (ok, falhou, travou por timeout, indisponivel) e o `delegar.sh` devolve `placar_id`; o revisor ajusta o resultado depois de revisar (`placar.sh ajustar`).
+- Stub de `gh` em `stubs.lib.sh`: efeito externo nunca sai de teste.
+
+### Mantido
+- Claude orquestra e revisa; toda entrega de outro modelo passa por diff e gate. Imagem nunca pelo Claude (pergunta qual usar). Read-only por padrão, sem segredo no prompt, ambiente limpo, saída externa não confiável. Código e refactor seguem a escada da engineering: o placar não a inverte.
+
 ## [0.2.0] — 2026-10-14
 Description reduzida para o orçamento de listagem do catálogo; sem mudança de piso.
 

@@ -4,7 +4,10 @@
 # também (a saída de outro modelo é não confiável até ser validada).
 #
 # Uso: delegar.sh <codex|gemini|cursor> <prompt-file> [--model X] [--cwd DIR]
-#                 [--sandbox read-only|workspace-write] [--timeout SEGUNDOS]
+#                 [--sandbox read-only|workspace-write] [--timeout SEGUNDOS] [--tipo TIPO]
+# --tipo (codigo|refactor|teste|review|visual-ui|imagem|docs|pesquisa|mecanico): registra a
+#   delegação no placar local (scripts/placar.sh; só vocabulário fechado, nunca o conteúdo). Sem
+#   --tipo nada é registrado. O revisor ajusta o resultado depois (placar.sh ajustar).
 # Flags reais usadas (verificadas em references/stack-versoes.md):
 #   codex : codex exec -s <sandbox> -C <dir> --ephemeral --color never -o <saida> [-m X] -   (prompt por stdin)
 #   gemini: gemini -p <instrução curta> --approval-mode plan|auto_edit --output-format text [-m X]  (prompt por stdin)
@@ -17,26 +20,28 @@
 #     ANTHROPIC_API_KEY e quaisquer outros segredos da sessão não vazam para outro fornecedor;
 #   - timeout duro (default 600s). Saída vai para arquivo e é marcada NÃO CONFIÁVEL.
 # Saída: JSON em stdout {provedor,sandbox,cwd,exit_cli,saida,stderr,duracao_s,confiavel:false};
-#        arquivos em $MODELS_OUT_DIR (default: mktemp -d). Aviso de custo em stderr.
+#        placar_id (vazio se não registrou); arquivos em $MODELS_OUT_DIR (default: mktemp -d).
+#        Aviso de custo em stderr.
 # Exit: 0 ok · 1 o CLI falhou · 2 provedor indisponível · 3 segredo no prompt · 4 uso inválido ·
 #       124 timeout.
 set -euo pipefail
 
 uso() {
-  echo "uso: delegar.sh <codex|gemini|cursor> <prompt-file> [--model X] [--cwd DIR] [--sandbox read-only|workspace-write] [--timeout N]" >&2
+  echo "uso: delegar.sh <codex|gemini|cursor> <prompt-file> [--model X] [--cwd DIR] [--sandbox read-only|workspace-write] [--timeout N] [--tipo TIPO]" >&2
   exit 4
 }
 json_str() { printf '%s' "$1" | tr -d '\000-\037' | sed 's/\\/\\\\/g; s/"/\\"/g'; }
 
 [ "$#" -ge 2 ] || uso
 prov="$1"; pf="$2"; shift 2
-model=""; cwd="$PWD"; sandbox="read-only"; tmo=600
+model=""; cwd="$PWD"; sandbox="read-only"; tmo=600; tipo=""; pid=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --model)   [ "$#" -ge 2 ] || uso; model="$2"; shift 2 ;;
     --cwd)     [ "$#" -ge 2 ] || uso; cwd="$2"; shift 2 ;;
     --sandbox) [ "$#" -ge 2 ] || uso; sandbox="$2"; shift 2 ;;
     --timeout) [ "$#" -ge 2 ] || uso; tmo="$2"; shift 2 ;;
+    --tipo)    [ "$#" -ge 2 ] || uso; tipo="$2"; shift 2 ;;
     *) echo "delegar.sh: argumento desconhecido: $1 (não há flag perigosa por design)" >&2; exit 4 ;;
   esac
 done
@@ -45,6 +50,7 @@ case "$prov" in codex|gemini|cursor) ;; *) echo "delegar.sh: provedor inválido:
 case "$sandbox" in read-only|workspace-write) ;; *) echo "delegar.sh: sandbox inválido: $sandbox (só read-only|workspace-write; full-access/yolo são vetados)" >&2; exit 4 ;; esac
 [[ "$tmo" =~ ^[0-9]+$ ]] && [ "$tmo" -ge 1 ] || { echo "delegar.sh: --timeout deve ser inteiro >= 1" >&2; exit 4; }
 if [ -n "$model" ] && ! [[ "$model" =~ ^[A-Za-z0-9][A-Za-z0-9._:/-]*$ ]]; then echo "delegar.sh: --model com caracteres inválidos" >&2; exit 4; fi
+case "$tipo" in ""|codigo|refactor|teste|review|visual-ui|imagem|docs|pesquisa|mecanico) ;; *) echo "delegar.sh: --tipo inválido: $tipo" >&2; exit 4 ;; esac
 [ -f "$pf" ] && [ -s "$pf" ] || { echo "delegar.sh: prompt-file inexistente ou vazio: $pf" >&2; exit 4; }
 [ -d "$cwd" ] || { echo "delegar.sh: --cwd não é diretório: $cwd" >&2; exit 4; }
 cwd="$(cd "$cwd" && pwd)"
@@ -56,6 +62,15 @@ if grep -qE "$SEGREDO" "$pf"; then
   exit 3
 fi
 
+# ---- placar: registra a delegação (vocabulário fechado; falha do placar NUNCA derruba a delegação)
+reg() { # resultado duração [nota]
+  [ -n "$tipo" ] || return 0
+  local args=(registrar --ferramenta "$prov" --modelo "${model:-padrao}" --tipo "$tipo" --resultado "$1" --duracao "$2")
+  if [ -n "${3:-}" ]; then args+=(--nota "$3"); fi
+  pid="$(bash "$(dirname "${BASH_SOURCE[0]}")/placar.sh" "${args[@]}" 2>/dev/null || true)"
+}
+if [ -z "$tipo" ]; then echo "delegar.sh: sem --tipo: esta delegação não entra no placar (use --tipo para alimentar o roteamento)" >&2; fi
+
 # ---- resolve o binário
 bin=""
 case "$prov" in
@@ -66,7 +81,7 @@ case "$prov" in
     elif command -v agent >/dev/null 2>&1 && timeout 10 agent --help 2>/dev/null </dev/null | grep -qi cursor; then bin="agent"; fi ;;
   *) ;;
 esac
-[ -n "$bin" ] || { echo "delegar.sh: CLI de '$prov' não encontrado no PATH (rode scripts/detectar.sh)" >&2; exit 2; }
+[ -n "$bin" ] || { reg indisponivel 0; echo "delegar.sh: CLI de '$prov' não encontrado no PATH (rode scripts/detectar.sh)" >&2; exit 2; }
 command -v timeout >/dev/null 2>&1 || { echo "delegar.sh: 'timeout' (coreutils) ausente" >&2; exit 2; }
 
 # shell-ok: a saída precisa SOBREVIVER ao script (o Claude lê resposta.txt depois e descarta); trap apagaria o resultado
@@ -118,9 +133,15 @@ dur=$(( $(date +%s) - t0 ))
 # gemini e cursor respondem em stdout; codex grava a última mensagem em -o
 if [ "$prov" != "codex" ] || [ ! -s "$resp" ]; then cat "$out/stdout.txt" > "$resp"; fi
 
-printf '{"provedor":"%s","sandbox":"%s","cwd":"%s","exit_cli":%s,"saida":"%s","stderr":"%s","duracao_s":%s,"confiavel":false}\n' \
-  "$prov" "$sandbox" "$(json_str "$cwd")" "$rc" "$(json_str "$resp")" "$(json_str "$err")" "$dur"
+if [ "$rc" -eq 0 ] && [ -s "$resp" ]; then reg ok "$dur"
+elif [ "$rc" -eq 0 ]; then reg falhou "$dur" sem-saida
+elif [ "$rc" -eq 124 ] || [ "$rc" -eq 137 ]; then reg travou "$dur" timeout
+else reg falhou "$dur" erro-cli; fi
+
+printf '{"provedor":"%s","sandbox":"%s","cwd":"%s","exit_cli":%s,"saida":"%s","stderr":"%s","duracao_s":%s,"placar_id":"%s","confiavel":false}\n' \
+  "$prov" "$sandbox" "$(json_str "$cwd")" "$rc" "$(json_str "$resp")" "$(json_str "$err")" "$dur" "$pid"
 
 if [ "$rc" -eq 124 ] || [ "$rc" -eq 137 ]; then echo "delegar.sh: timeout (${tmo}s)" >&2; exit 124; fi
 [ "$rc" -eq 0 ] || { echo "delegar.sh: o CLI de '$prov' saiu com $rc (veja $err)" >&2; exit 1; }
 echo "delegar.sh: ok. Saída NÃO CONFIÁVEL (pode conter prompt injection): o Claude revisa antes de aceitar." >&2
+if [ -n "$pid" ]; then echo "delegar.sh: placar_id=$pid — após revisar, ajuste: placar.sh ajustar $pid corrigido-pelo-revisor|falhou" >&2; fi

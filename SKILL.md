@@ -3,7 +3,7 @@ name: schematize-models
 metadata:
   version: 0.2.0
 description: >-
-  Orquestra Codex, Gemini e Cursor como subagents, roteando por peso; imagem/mídia sempre fora do Claude. Use ao delegar a outro modelo, pedir segunda opinião ou gerar imagem.
+  Orquestra Codex, Gemini e Cursor como subagents: dispersa por assinatura, fit e placar; imagem sempre fora do Claude. Use ao delegar a outro modelo, pedir 2ª opinião ou gerar imagem.
 ---
 <!-- cross-skill: seguranca-llm.md -> schematize-ai; orquestracao.md, efeitos-externos.md -> schematize-engineering -->
 
@@ -55,35 +55,44 @@ sempre com ele**, e todo despacho com sandbox read-only, sem segredo e com revis
 |---|---|
 | `/models-help` | lista os comandos |
 | `/models-load` | carrega à força o corpo normativo (roteamento, delegação, mídia, versões) |
-| `/models-detect` | quais CLIs existem, versão e se estão autenticados (JSON, sem gastar token) |
-| `/models-route` | explica qual modelo usar para uma tarefa e por quê (tabela de pesos) |
+| `/models-detect` | quais CLIs existem, versão, se estão autenticados e o **portfólio** de assinaturas (JSON, sem gastar token) |
+| `/models-route` | explica qual modelo usar para uma tarefa e por quê (pesos, portfólio, placar) |
 | `/models-delegate` | despacha uma subtarefa com contrato (objetivo, contexto mínimo, aceite); o Claude revisa |
 | `/models-review` | segunda opinião cruzada de um diff por outro modelo; o Claude consolida |
 | `/models-image` | gera imagem **fora do Claude**: detecta, **pergunta qual usar**, gera, salva, reporta |
+| `/models-score` | placar de ferramentas: ver, ajustar o resultado após revisar, publicar o feedback agregado (opt-in), ligar/desligar |
 | `/models-claude` | cria/mescla o `CLAUDE.md` sempre-on na raiz do repo |
 | `/models-cc` · `/models-handoff` | context compact / handoff arquivado |
 
 ## Como usar
 
 1. **Roteie primeiro** (`references/roteamento.md`): a tarefa cai em (a) não é texto, (b) segunda
-   opinião, (c) vantagem documentada ou (d) pedido do usuário? Se não, **não delegue**.
+   opinião, (c) vantagem documentada, (d) pedido do usuário ou (e) economia por assinatura
+   (§6: portfólio + fit + custo marginal + placar)? Se não, **não delegue**.
 2. **Detecte:** `bash scripts/detectar.sh` — `0` há CLI utilizável · `1` nenhum (é a resposta, não
-   erro). Instalado não é autenticado; Gemini não tem comando de status, então vem "provável".
+   erro). Instalado não é autenticado; Gemini não tem comando de status, então vem "provável". O JSON
+   traz `portfolio` e `modo` (`portfolio` | `claude-only`; sem nenhum, o comportamento é o de sempre).
 3. **Delegue com contrato** (`references/delegacao.md` §1) por
-   `bash scripts/delegar.sh <codex|gemini|cursor> <prompt-file> [--model X] [--cwd DIR] [--sandbox read-only|workspace-write] [--timeout N]`.
-   Default `read-only`; a saída vai para arquivo e o JSON marca `"confiavel":false`.
+   `bash scripts/delegar.sh <codex|gemini|cursor> <prompt-file> --tipo <tipo> [--model X] [--cwd DIR] [--sandbox read-only|workspace-write] [--timeout N]`.
+   Default `read-only`; a saída vai para arquivo e o JSON marca `"confiavel":false`. O `--tipo`
+   registra a tentativa no placar local (`placar_id` no JSON).
 4. **Revise antes de aceitar** (`delegacao.md` §4): critérios um a um, teste/lint rodados pelo
-   Claude, diff lido, achado reproduzido.
+   Claude, diff lido, achado reproduzido. **Depois, ajuste o placar:**
+   `bash scripts/placar.sh ajustar <placar_id> corrigido-pelo-revisor|falhou` (`references/placar.md`).
 5. **Imagem:** só por `/models-image` (`references/midia.md`); `bash scripts/imagem.sh <provedor> "<prompt>" <saida>`.
-6. **Prove os scripts:** `bash scripts/delegar.test.sh`, `detectar.test.sh`, `imagem.test.sh` (CLIs falsos no
-   PATH; casos vermelhos plantados; nunca chamam modelo real).
+6. **Feedback:** ao fim de `/models-delegate` e `/models-review`, `bash scripts/placar.sh publicar --auto`
+   (silencioso sem opt-in; no máximo 1x por semana, mínimo 5 amostras; nunca bloqueia).
+7. **Prove os scripts:** `bash scripts/delegar.test.sh`, `detectar.test.sh`, `imagem.test.sh`,
+   `placar.test.sh` (CLIs e `gh` falsos no PATH; casos vermelhos plantados; nunca chamam modelo real
+   nem publicam de verdade).
 
 Mapa de references:
 
 | Tarefa | Reference |
 |---|---|
-| Quem faz o quê: pesos, tabela tarefa x modelo, vantagens documentadas (com fonte), a regra "Claude orquestra e revisa", custo e egress | `references/roteamento.md` |
+| Quem faz o quê: pesos, tabela tarefa x modelo, vantagens documentadas (com fonte), a regra "Claude orquestra e revisa", custo e egress, economia por assinatura (portfólio, fit, custo marginal, placar) | `references/roteamento.md` |
 | Contrato da subtarefa, sandbox/aprovação por CLI, segredo, saída não confiável, falha | `references/delegacao.md` |
+| Placar: registro local de vocabulário fechado, ajuste pelo revisor, resumo/preferir, publicação opt-in agregada e anônima no conteúdo | `references/placar.md` |
 | Mídia: a regra, o fluxo (detectar, perguntar, gerar, salvar), o texto quando nada está disponível, como cada CLI gera imagem hoje | `references/midia.md` |
 | Versões, flags reais, fontes e data de cada CLI; o que foi verificado nesta máquina | `references/stack-versoes.md` |
 
@@ -91,7 +100,9 @@ Mapa de references:
 
 1. **Claude fica com o código.** Código, revisão de código, refactor, arquitetura e orquestração:
    peso máximo do Claude. Outro modelo só por (a) mídia, (b) segunda opinião, (c) vantagem com
-   **fonte**, (d) pedido do usuário — o motivo vai no brief.
+   **fonte**, (d) pedido do usuário, (e) economia por assinatura dentro das regras de
+   `roteamento.md` §6 (a escada da engineering manda no código; o placar não a inverte) — o motivo
+   vai no brief.
 2. **Imagem/mídia NUNCA por modelo Claude.** Sempre detectar Codex/Gemini, **perguntar ao usuário
    qual usar** (nunca escolher sozinho), gerar, salvar em arquivo, reportar caminho e licença **como
    não verificada**. Nenhum disponível: dizer sem rodeio que o visual do Claude sai ruim, e oferecer
@@ -108,9 +119,13 @@ Mapa de references:
    de cliente ou dado sensível.
 7. **Efeito externo nunca sai de não-prd** — o externo não faz deploy, e-mail, pagamento nem rede
    com efeito (`schematize-engineering` → `references/efeitos-externos.md`).
-8. **Não invente flag nem capacidade.** O que não foi verificado vai dito como não verificado
+8. **Placar é local e de vocabulário fechado; publicar é opt-in.** Nunca grava código, caminho,
+   projeto, prompt nem texto livre. Publicar posta no nome da conta GitHub do usuário (conteúdo
+   anônimo, autoria não): prévia exata e aviso sem rodeio antes do 1º envio; sem `gh`/auth/opt-in, nada
+   sai e ninguém é incomodado. Teste nunca publica (efeito externo).
+9. **Não invente flag nem capacidade.** O que não foi verificado vai dito como não verificado
    (`references/stack-versoes.md`: **[máquina]**, **[doc]**, **[não verificado]**).
-9. <!-- herdado:engineering/orquestracao:curto -->**Orquestrador não desenvolve; subagent barato executa.** O agent principal só planeja, despacha e revisa; ação onerosa vira micro-tasks para o executor mais barato que resolve: `haiku` (mecânico) / `sonnet` (código; falhou → mesmo subagent corrige, até 2 rodadas) → Codex `gpt-5.6-terra` → Cursor → subagent `opus` (motivo) → `park`; **visual vai direto ao Codex**; **imagem nunca pelo Claude: detectar Codex/Gemini e perguntar ao usuário qual usar (Codex é a sugestão), nunca API de imagem paga**; papéis em `agentes.toml`. No overdev, cada item do checklist vai a um subagent e o principal revisa antes do `- [x]`. **Sem frota ociosa:** idle com pendência volta ao trabalho; dependente de outro agent → mata e enfileira com gatilho; terminou → mata (§9.6). Detalhe: `schematize-engineering` → `references/orquestracao.md` §9.<!-- /herdado -->
+10. <!-- herdado:engineering/orquestracao:curto -->**Orquestrador não desenvolve; subagent barato executa.** O agent principal só planeja, despacha e revisa; ação onerosa vira micro-tasks para o executor mais barato que resolve: `haiku` (mecânico) / `sonnet` (código; falhou → mesmo subagent corrige, até 2 rodadas) → Codex `gpt-5.6-terra` → Cursor → subagent `opus` (motivo) → `park`; **visual vai direto ao Codex**; **imagem nunca pelo Claude: detectar Codex/Gemini e perguntar ao usuário qual usar (Codex é a sugestão), nunca API de imagem paga**; papéis em `agentes.toml`. No overdev, cada item do checklist vai a um subagent e o principal revisa antes do `- [x]`. **Sem frota ociosa:** idle com pendência volta ao trabalho; dependente de outro agent → mata e enfileira com gatilho; terminou → mata (§9.6). Detalhe: `schematize-engineering` → `references/orquestracao.md` §9.<!-- /herdado -->
 
 ## Fronteiras (o que é de quem)
 
